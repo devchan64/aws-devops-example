@@ -2,6 +2,8 @@
 
 이 레포지토리는 AWS 기반 인프라와 애플리케이션 배포를 자동화하는 DevOps 예제 프로젝트입니다. GitHub Actions와 AWS CloudFormation, ECS, ECR, ALB 등을 활용하여 IaC(Infrastructure as Code) 및 CI/CD 파이프라인을 구성하는 실습용 예제로, DevOps 설계 및 운영 경험을 공유하기 위해 제작되었습니다.
 
+- flake8 black isort bandit를 사용하였으며, actions의 artifacts로 로그를 저장합니다. (향후 변경을 하기위한 구조로서 활용합니다.)
+
 ## 주요 구성 요소
 
 - **GitHub Actions**: CI/CD 자동화 파이프라인 구성
@@ -20,6 +22,7 @@ aws-devops-example/
 │   ├── deploy-security.yml
 │   ├── deploy-alb.yml
 │   └── ...
+├── doc/                    # 참고 문서
 ├── infra/                  # CloudFormation 템플릿 파일
 │   ├── vpc/
 │   │   └── vpc.yaml
@@ -51,7 +54,9 @@ aws-devops-example/
 ### 1. 인프라 배포
 
 GitHub Actions를 사용해 VPC → ALB → ECS 순서로 배포됩니다. 각 워크플로우는 `workflow_dispatch` 또는 이전 스택이 완료된 경우 자동 실행됩니다.
-
+자세한 내용은 `doc/*'의 파일들을 참고해주세요
+![배포 구성도](doc/infra_dependency.png)
+![MSA 예시](doc/msa_achitecture.png)
 # 수동 실행도 가능
 ```text
 GitHub → Actions → vpc-stack → Run workflow

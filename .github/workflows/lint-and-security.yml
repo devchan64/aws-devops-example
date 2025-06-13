@@ -1,0 +1,59 @@
+name: Style Lint & Security Analysis
+
+on:
+  push:
+    paths:
+      - "packages/hello/**"
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  style-and-security-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python tools
+        run: |
+          pip install flake8 black isort bandit
+
+      # --- 코드 스타일 검사 + 리포트 저장 ---
+      - name: Run flake8
+        run: flake8 packages/hello > flake8.log || true
+
+      - name: Run black (check only)
+        run: black packages/hello --check --diff > black.log || true
+
+      - name: Run isort (check only)
+        run: isort packages/hello --check-only --diff > isort.log || true
+
+      - name: Upload Lint Logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: style-lint-logs
+          path: |
+            flake8.log
+            black.log
+            isort.log
+
+      # --- 보안 검사: Bandit + SARIF ---
+      - name: Run Bandit and convert to SARIF
+        run: |
+          bandit -r packages/hello/app -f json -o bandit-output.json --exit-zero
+
+      - name: Upload Bandit Raw JSON (optional)
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-json-report
+          path: bandit-output.json
