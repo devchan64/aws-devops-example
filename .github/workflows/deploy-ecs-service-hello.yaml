@@ -1,0 +1,57 @@
+name: 4. Deploy Hello App to ECS Service
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'infra/ecs-service/**'
+
+jobs:
+  deploy-hello-stack:
+    if: >
+      github.event_name == 'workflow_dispatch' || 
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+
+    env:
+      ENVIRONMENT: dev
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set script permissions
+        run: chmod +x ./ecs-service/*.sh ./infra/ecs-service/*.sh
+
+      - name: Check Dependency Stacks
+        run: |
+          for resource in ecs-cluster ecs-taskdef-hello security subnet; do
+            echo "[INFO] Checking stack: $resource"
+            if ! ./infra/check.sh "$resource"; then
+              echo "::error::Required stack '$ENVIRONMENT-$resource' is missing. Aborting."
+              exit 1
+            fi
+          done
+
+      - name: Deploy Task Definition
+        run: ./infra/deploy.sh ecs-service-hello ./infra/ecs-taskdef-hello/ecs-taskdef-hello.yaml
+
+      - name: Test Task Definition
+        run: |
+          if ! ./infra/ecs-taskdef-hello/test-ecs-taskdef-hello.sh; then
+          echo "Test failed, rolling back..."
+          ./infra/delete.sh ecs-service-hello
+          exit 1
+          fi
+
+      - name: Done
+        run: echo "✅ Stack deployment command executed asynchronously."

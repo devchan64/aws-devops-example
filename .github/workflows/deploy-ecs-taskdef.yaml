@@ -1,0 +1,47 @@
+name: 3. Deploy ECS Task Definition
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - infra/ecs-taskdef-hello/**
+
+jobs:
+  deploy-taskdef:
+    runs-on: ubuntu-latest
+
+    env:
+      ENVIRONMENT: dev
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set script permissions
+        run: chmod +x ./infra/*.sh ./infra/ecs-taskdef-hello/*.sh
+
+      - name: Check Dependency Stack
+        run: ./infra/check.sh role
+
+      - name: Deploy Task Definition
+        run: ./infra/deploy.sh ecs-taskdef-hello ./infra/ecs-taskdef-hello/ecs-taskdef-hello.yaml
+
+      - name: Test Task Definition
+        run: |
+          if ! ./infra/ecs-taskdef-hello/test-ecs-taskdef-hello.sh; then
+          echo "Test failed, rolling back..."
+          ./infra/delete.sh ecs-taskdef-hello
+          exit 1
+          fi
+
+      - name: Success message
+        run: echo "ECS Task Definition deployed and validated successfully."

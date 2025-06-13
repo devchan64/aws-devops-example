@@ -1,0 +1,47 @@
+name: 1. Deploy ECS Cluster
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'infra/ecs-cluster/**'
+
+jobs:
+  deploy-ecs-cluster:
+    runs-on: ubuntu-latest
+
+    env:
+      ENVIRONMENT: dev
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set script permissions
+        run: chmod +x ./infra/ecs-cluster/*.sh ./infra/*.sh
+      
+      - name: Check Dependency Stack
+        run: ./infra/check.sh alb-with-tg
+
+      - name: Deploy ECS Cluster
+        run: ./infra/deploy.sh ecs-cluster ./infra/ecs-cluster/ecs-cluster.yaml
+
+      - name: Test ECS Cluster
+        run: |
+          if ! ./infra/ecs-cluster/test-ecs-cluster.sh; then
+            echo "Test failed, rolling back..."
+            ./infra/delete.sh ecs-cluster
+            exit 1
+          fi
+
+      - name: Success message
+        run: echo "✅ ECS Cluster stack deployed and validated successfully."

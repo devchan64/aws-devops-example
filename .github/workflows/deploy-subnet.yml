@@ -1,0 +1,47 @@
+name: 2. Deploy Subnet Stack DEV
+
+on:
+  push:
+    paths:
+      - 'infra/subnet/**'
+  workflow_dispatch:
+
+env:
+  ENVIRONMENT: dev
+
+jobs:
+  deploy-subnet:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set script permissions
+        run: chmod +x ./infra/*.sh ./infra/subnet/*.sh
+
+      - name: Check Dependency Stack
+        run: ./infra/check.sh vpc
+
+      - name: Deploy Subnet
+        run: ./infra/deploy.sh subnet ./infra/subnet/subnet.yaml
+
+      - name: Test Subnet
+        run: |
+          if ! ./infra/subnet/test-subnet.sh; then
+            echo "Test failed, rolling back..."
+            ./infra/delete.sh subnet
+            exit 1
+          fi
+
+      - name: Success message
+        run: echo "Subnet stack deployed and validated successfully."

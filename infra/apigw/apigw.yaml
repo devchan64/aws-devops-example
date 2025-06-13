@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: API Gateway HTTP API integrated with ALB
+
+Parameters:
+  Environment:
+    Type: String
+    Default: test
+
+Resources:
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub "${Environment}-http-api"
+      ProtocolType: HTTP
+      Tags:
+        Environment: !Ref Environment
+
+  ApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: HTTP_PROXY
+      IntegrationUri:
+        Fn::Sub:
+          - "http://${DNSName}/{proxy}"
+          - DNSName:
+              Fn::ImportValue: !Sub "${Environment}-alb-dns"
+      IntegrationMethod: ANY
+      PayloadFormatVersion: "1.0"
+
+  ApiRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: "ANY /{proxy+}"
+      Target: !Sub "integrations/${ApiIntegration}"
+      AuthorizationType: NONE
+
+  ApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: api
+      AutoDeploy: true
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway base URL
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/api/"
+    Export:
+      Name: !Sub "${Environment}-api-url"

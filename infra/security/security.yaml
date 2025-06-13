@@ -1,0 +1,42 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Security Group for public access
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+
+Resources:
+  PublicSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow HTTP and HTTPS traffic
+      VpcId: !ImportValue
+        Fn::Sub: "${Environment}-vpc-id"  # VPC 스택에서 Export한 값
+      Tags:
+        - Key: Name
+          Value: !Sub "${Environment}-sg"
+
+  IngressHTTP:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref PublicSecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: 0.0.0.0/0
+
+  IngressHTTPS:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref PublicSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      CidrIp: 0.0.0.0/0
+
+Outputs:
+  SecurityGroupId:
+    Value: !Ref PublicSecurityGroup
+    Export:
+      Name: !Sub "${Environment}-security-group-id"

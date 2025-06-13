@@ -1,0 +1,39 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ECS Service for Hello App
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+
+Resources:
+
+  HelloService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Sub "${Environment}-ecs-cluster"
+      ServiceName: !Sub "${Environment}-ecs-service-hello"
+      LaunchType: FARGATE
+      DesiredCount: 1
+      TaskDefinition:
+        Fn::ImportValue: !Sub "${Environment}-ecs-taskdef-hello-arn"
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets:
+            - Fn::ImportValue: !Sub "${Environment}-subnet-1-id"
+            - Fn::ImportValue: !Sub "${Environment}-subnet-2-id"
+          SecurityGroups:
+            - Fn::ImportValue: !Sub "${Environment}-security-group-id"
+      LoadBalancers:
+        - ContainerName: hello
+          ContainerPort: 80
+          TargetGroupArn:
+            Fn::ImportValue: !Sub "${Environment}-tg-arn"
+
+Outputs:
+  ECSServiceName:
+    Description: ECS Service Name
+    Value: !Ref HelloService
+    Export:
+      Name: !Sub "${Environment}-ecs-service-hello"

@@ -1,0 +1,45 @@
+name: 1. Deploy VPC Stack DEV
+
+on:
+  push:
+    paths:
+      - 'infra/vpc/**'
+  workflow_dispatch:
+
+env:
+  ENVIRONMENT: dev
+
+jobs:
+  deploy-vpc:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set script permissions
+        run: chmod +x ./infra/*.sh ./infra/vpc/*.sh
+
+      - name: Deploy VPC
+        run: ./infra/deploy.sh vpc ./infra/vpc/vpc.yaml
+
+      - name: Test VPC
+        run: |
+          if ! ./infra/vpc/test-vpc.sh; then
+            echo "Test failed, rolling back..."
+            ./infra/delete.sh vpc
+            exit 1
+          fi
+
+      - name: Success message
+        run: echo "VPC stack deployed and validated successfully."

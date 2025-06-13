@@ -1,0 +1,48 @@
+name: 4. Deploy API Gateway
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'infra/apigw/**'
+
+env:
+  ENVIRONMENT: dev
+
+jobs:
+  deploy-apigw:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set script permissions
+        run: chmod +x ./infra/apigw/*.sh ./infra/*.sh
+
+      - name: Check Dependency Stack
+        run: ./infra/check.sh alb-with-tg
+
+      - name: Deploy API Gateway
+        run: ./infra/deploy.sh apigw ./infra/apigw/apigw.yaml
+
+      - name: Test API Gateway
+        run: |
+          if ! ./infra/apigw/test-apigw.sh; then
+            echo "Test failed. Rolling back deployment..."
+            ./infra/delete.sh apigw
+            exit 1
+          fi
+
+      - name: Success message
+        run: echo "API Gateway deployed and validated successfully."

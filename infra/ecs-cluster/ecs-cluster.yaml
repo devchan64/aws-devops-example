@@ -1,0 +1,24 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Shared ECS Fargate Cluster
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    Description: Deployment environment (e.g. dev, staging, prod)
+
+Resources:
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub "${Environment}-ecs-cluster"
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+
+Outputs:
+  ClusterName:
+    Description: Name of the ECS cluster
+    Value: !Ref ECSCluster
+    Export:
+      Name: !Sub "${Environment}-ecs-cluster"

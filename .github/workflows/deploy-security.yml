@@ -1,0 +1,47 @@
+name: 2. Deploy Security Stack DEV
+
+on:
+  push:
+    paths:
+      - 'infra/security/**'
+  workflow_dispatch:
+
+env:
+  ENVIRONMENT: dev
+
+jobs:
+  deploy-security:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set script permissions
+        run: chmod +x ./infra/*.sh ./infra/security/*.sh
+
+      - name: Check Dependency Stack
+        run: ./infra/check.sh vpc
+
+      - name: Deploy Security
+        run: ./infra/deploy.sh security ./infra/security/security.yaml
+
+      - name: Test Security
+        run: |
+          if ! ./infra/security/test-security.sh; then
+            echo "Test failed, rolling back..."
+            ./infra/delete.sh security
+            exit 1
+          fi
+
+      - name: Success message
+        run: echo "Security stack deployed and validated successfully."

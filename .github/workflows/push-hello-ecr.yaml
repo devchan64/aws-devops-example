@@ -1,0 +1,97 @@
+name: 1. Build and Push Hello Image to ECR
+
+on:
+  push:
+    paths:
+      - 'packages/hello/app/**'
+      - 'packages/hello/Dockerfile'
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: dev-hello
+  ENVIRONMENT: dev
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Ensure ECR repository exists
+        run: |
+          IMAGE_URI=${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_NAME }}
+          REPO_CHECK=$(aws ecr describe-repositories \
+            --repository-names "${{ env.IMAGE_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --query 'repositories[0].repositoryName' \
+            --output text 2>/dev/null || echo "none")
+          if [[ "$REPO_CHECK" == "none" ]]; then
+            echo "ECR 리포지토리가 존재하지 않아 생성합니다: ${{ env.IMAGE_NAME }}"
+            aws ecr create-repository --repository-name "${{ env.IMAGE_NAME }}" --region "${{ env.AWS_REGION }}"
+          else
+            echo "ECR 리포지토리 이미 존재: ${{ env.IMAGE_NAME }}"
+          fi
+
+      - name: Set IMAGE_URI
+        run: echo "IMAGE_URI=${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_ENV
+
+      - name: Build Docker image
+        run: |
+          echo "Building image: $IMAGE_URI"
+          docker build -t $IMAGE_URI ./packages/hello
+
+      - name: Push image to ECR
+        run: |
+          echo "Pushing image: $IMAGE_URI"
+          docker push $IMAGE_URI
+
+      - name: Force new deployment to ECS if service is available
+        run: |
+          set -e
+          CLUSTER_NAME=${ENVIRONMENT}-ecs-cluster
+          SERVICE_NAME=${ENVIRONMENT}-ecs-service-hello
+
+          echo "[INFO] Checking ECS cluster: $CLUSTER_NAME"
+          CLUSTER_STATUS=$(aws ecs describe-clusters \
+            --clusters $CLUSTER_NAME \
+            --region $AWS_REGION \
+            --query 'clusters[0].status' \
+            --output text 2>/dev/null || echo "MISSING")
+          if [[ "$CLUSTER_STATUS" != "ACTIVE" ]]; then
+            echo "[WARN] ECS Cluster '$CLUSTER_NAME' not found or not active. Skipping deployment."
+            exit 0
+          fi
+
+          echo "[INFO] Checking ECS service: $SERVICE_NAME"
+          SERVICE_STATUS=$(aws ecs describe-services \
+            --cluster $CLUSTER_NAME \
+            --services $SERVICE_NAME \
+            --region $AWS_REGION \
+            --query 'services[0].status' \
+            --output text 2>/dev/null || echo "MISSING")
+          if [[ "$SERVICE_STATUS" != "ACTIVE" ]]; then
+            echo "[WARN] ECS Service '$SERVICE_NAME' not found or not active. Skipping deployment."
+            exit 0
+          fi
+
+          echo "[INFO] Forcing new deployment on ECS..."
+          aws ecs update-service \
+            --cluster $CLUSTER_NAME \
+            --service $SERVICE_NAME \
+            --force-new-deployment \
+            --region $AWS_REGION

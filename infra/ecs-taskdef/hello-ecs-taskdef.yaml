@@ -1,0 +1,50 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ECS Task Definition for Hello App
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+
+Resources:
+
+  HelloLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/ecs/${Environment}-hello"
+      RetentionInDays: 7
+    DeletionPolicy: Delete
+
+  HelloTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${Environment}-ecs-taskdef-hello"
+      Cpu: 256
+      Memory: 512
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn:
+        Fn::ImportValue: !Sub "${Environment}-ecs-execution-role-arn"
+      TaskRoleArn:
+        Fn::ImportValue: !Sub "${Environment}-ecs-task-role-arn"
+      ContainerDefinitions:
+        - Name: hello
+          Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${Environment}-hello:latest"
+          Essential: true
+          PortMappings:
+            - ContainerPort: 80
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Sub "/ecs/${Environment}-hello"
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: hello
+
+Outputs:
+  TaskDefinitionArn:
+    Description: ECS Task Definition ARN
+    Value: !Ref HelloTaskDefinition
+    Export:
+      Name: !Sub "${Environment}-ecs-taskdef-hello-arn"

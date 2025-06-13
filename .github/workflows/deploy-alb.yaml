@@ -1,0 +1,58 @@
+name: 3. Deploy ALB Stack DEV
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'infra/alb/**'
+
+env:
+  ENVIRONMENT: dev
+
+jobs:
+  deploy-alb:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set script permissions
+        run: chmod +x ./infra/*.sh ./infra/alb/*.sh
+
+      - name: Check Dependency Stack
+        run: ./infra/check.sh vpc
+
+      - name: Deploy ALB
+        run: ./infra/deploy.sh alb-with-tg ./infra/alb-with-tg/alb-with-tg.yaml
+
+      - name: Test ALB
+        run: |
+          if ! ./infra/alb/test-alb-with-tg.sh; then
+            echo "Test failed, rolling back..."
+            ./infra/delete.sh alb-with-tg
+            exit 1
+          fi
+
+      - name: Describe stack events on failure
+        if: failure()
+        run: |
+          aws cloudformation describe-stack-events \
+            --stack-name "${ENVIRONMENT}-alb-with-tg" \
+            --region "$AWS_REGION" \
+            --output table | head -n 50
+
+      - name: Success confirmation
+        run: echo "✅ ALB stack deployed and validated successfully."
