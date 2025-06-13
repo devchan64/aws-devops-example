@@ -6,7 +6,7 @@ on:
     paths:
       - infra/ecs-taskdef-hello/**
   workflow_run:
-    workflows: ["role-stack"]
+    workflows: ["role-stack", "push-ecr-hello"]
     types:
       - completed
 
@@ -17,7 +17,6 @@ jobs:
       github.event_name == 'push' ||
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
-
     env:
       ENVIRONMENT: dev
       AWS_REGION: ${{ secrets.AWS_REGION }}
