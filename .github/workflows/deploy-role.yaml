@@ -30,13 +30,13 @@ jobs:
         run: chmod +x ./infra/*.sh ./infra/role/*.sh
 
       - name: Deploy Role
-        run: ./infra/deploy.sh ecs-role ./infra/role/role.yaml
+        run: ./infra/deploy.sh ecs-role ./infra/role/ecs-role.yaml
 
       - name: Test Role
         run: |
-          if ! ./infra/role/test-role.sh; then
+          if ! ./infra/role/test-ecs-role.sh; then
           echo "Test failed, rolling back..."
-          ./infra/delete.sh role
+          ./infra/delete.sh ecs-role
           exit 1
           fi
 

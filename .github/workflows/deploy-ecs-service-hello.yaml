@@ -34,7 +34,7 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Set script permissions
-        run: chmod +x ./ecs-service/*.sh ./infra/ecs-service/*.sh
+        run: chmod +x ./infra/*.sh ./infra/ecs-service/*.sh
 
       - name: Check Dependency Stacks
         run: |
@@ -47,11 +47,11 @@ jobs:
           done
 
       - name: Deploy Task Definition
-        run: ./infra/deploy.sh ecs-service-hello ./infra/ecs-taskdef-hello/ecs-taskdef-hello.yaml
+        run: ./infra/deploy.sh ecs-service-hello ./infra/ecs-service/ecs-service-hello.yaml
 
       - name: Test Task Definition
         run: |
-          if ! ./infra/ecs-taskdef-hello/test-ecs-taskdef-hello.sh; then
+          if ! ./infra/ecs-service/test-ecs-service-hello.sh; then
           echo "Test failed, rolling back..."
           ./infra/delete.sh ecs-service-hello
           exit 1
