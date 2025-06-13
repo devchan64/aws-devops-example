@@ -1,7 +1,7 @@
 FROM python:3.10-slim as builder
 
 WORKDIR /install
-COPY requirements.txt .
+COPY app/requirements.txt .
 RUN pip install --user --no-cache-dir -r requirements.txt
 
 
