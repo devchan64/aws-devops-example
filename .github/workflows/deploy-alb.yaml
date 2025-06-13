@@ -1,16 +1,24 @@
-name: 3. Deploy ALB Stack DEV
+name: alb-stack
 
 on:
   workflow_dispatch:
   push:
     paths:
       - 'infra/alb/**'
+  workflow_run:
+    workflows: ["vpc-stack"]
+    types:
+      - completed
 
 env:
   ENVIRONMENT: dev
 
 jobs:
   deploy-alb:
+    if: >
+      github.event_name == 'workflow_dispatch' || 
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     env:
       AWS_REGION: ${{ secrets.AWS_REGION }}
@@ -30,7 +38,7 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Set script permissions
-        run: chmod +x ./infra/*.sh ./infra/alb/*.sh
+        run: chmod +x ./infra/*.sh ./infra/alb-with-tg/*.sh
 
       - name: Check Dependency Stack
         run: ./infra/check.sh vpc
@@ -40,7 +48,7 @@ jobs:
 
       - name: Test ALB
         run: |
-          if ! ./infra/alb/test-alb-with-tg.sh; then
+          if ! ./infra/alb-with-tg/test-alb-with-tg.sh; then
             echo "Test failed, rolling back..."
             ./infra/delete.sh alb-with-tg
             exit 1

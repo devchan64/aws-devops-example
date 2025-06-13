@@ -1,4 +1,4 @@
-name: 1. Deploy ECS Cluster
+name: ecs-cluster-stack
 
 on:
   workflow_dispatch:
@@ -28,9 +28,6 @@ jobs:
 
       - name: Set script permissions
         run: chmod +x ./infra/ecs-cluster/*.sh ./infra/*.sh
-      
-      - name: Check Dependency Stack
-        run: ./infra/check.sh alb-with-tg
 
       - name: Deploy ECS Cluster
         run: ./infra/deploy.sh ecs-cluster ./infra/ecs-cluster/ecs-cluster.yaml

@@ -1,4 +1,4 @@
-name: 1. Deploy ECS IAM Roles
+name: role-stack
 
 on:
   workflow_dispatch:

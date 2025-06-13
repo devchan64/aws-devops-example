@@ -1,16 +1,24 @@
-name: 4. Deploy API Gateway
+name: apigw-stack
 
 on:
   workflow_dispatch:
   push:
     paths:
       - 'infra/apigw/**'
+  workflow_run:
+    workflows: ["alb-stack"]
+    types:
+      - completed
 
 env:
   ENVIRONMENT: dev
 
 jobs:
   deploy-apigw:
+    if: >
+      github.event_name == 'workflow_dispatch' || 
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     env:
       AWS_REGION: ${{ secrets.AWS_REGION }}

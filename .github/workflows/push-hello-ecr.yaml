@@ -1,4 +1,4 @@
-name: 1. Build and Push Hello Image to ECR
+name: push-ecr
 
 on:
   push:

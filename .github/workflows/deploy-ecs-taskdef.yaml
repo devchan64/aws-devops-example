@@ -1,13 +1,21 @@
-name: 3. Deploy ECS Task Definition
+name: ecs-taskdef-hello-stack
 
 on:
   workflow_dispatch:
   push:
     paths:
       - infra/ecs-taskdef-hello/**
+  workflow_run:
+    workflows: ["role-stack"]
+    types:
+      - completed
 
 jobs:
   deploy-taskdef:
+    if: >
+      github.event_name == 'workflow_dispatch' || 
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
 
     env:

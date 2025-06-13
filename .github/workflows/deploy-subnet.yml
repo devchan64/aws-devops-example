@@ -1,16 +1,24 @@
-name: 2. Deploy Subnet Stack DEV
+name: subnet-stack
 
 on:
   push:
     paths:
       - 'infra/subnet/**'
   workflow_dispatch:
+  workflow_run:
+    workflows: ["vpc-stack"]
+    types:
+      - completed
 
 env:
   ENVIRONMENT: dev
 
 jobs:
   deploy-subnet:
+    if: >
+      github.event_name == 'workflow_dispatch' || 
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     env:
       AWS_REGION: ${{ secrets.AWS_REGION }}

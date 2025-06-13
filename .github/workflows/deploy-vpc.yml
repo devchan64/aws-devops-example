@@ -1,4 +1,4 @@
-name: 1. Deploy VPC Stack DEV
+name: vpc-stack
 
 on:
   push:

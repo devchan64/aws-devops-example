@@ -1,10 +1,14 @@
-name: 4. Deploy Hello App to ECS Service
+name: service-stack-hello
 
 on:
   workflow_dispatch:
   push:
     paths:
       - 'infra/ecs-service/**'
+  workflow_run:
+    workflows: ["ecs-taskdef-hello-stack"]
+    types:
+      - completed
 
 jobs:
   deploy-hello-stack:
